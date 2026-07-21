@@ -1,9 +1,9 @@
 {
   "id": "safe-attachment-trash",
   "name": "Safe Attachment Trash",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "minAppVersion": "1.13.0",
-  "description": "Find unused attachments, review files in Obsidian’s local trash, preview them, restore original paths, or delete permanently.",
+  "description": "Find unused attachments, review and preview files in the local trash, restore original paths, or delete permanently.",
   "author": "MrJahanbin",
   "isDesktopOnly": false,
   "authorUrl": "https://github.com/Mrjahanbin90"

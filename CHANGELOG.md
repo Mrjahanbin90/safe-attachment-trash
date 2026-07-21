@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Remove the redundant product name from the plugin description to satisfy community directory validation.
+
 ## 0.3.0
 
 - Store recoverable files in Obsidian's built-in `.trash` instead of `.safe-attachment-trash`.
