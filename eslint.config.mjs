@@ -24,7 +24,8 @@ export default defineConfig([
       ...tseslint.configs.recommendedTypeChecked[2].rules,
       "@typescript-eslint/require-await": "off",
       "@typescript-eslint/no-floating-promises": "warn",
-      "@typescript-eslint/no-misused-promises": ["warn", { "checksVoidReturn": true }]
+      "@typescript-eslint/no-misused-promises": ["warn", { "checksVoidReturn": true }],
+      "obsidianmd/settings-tab/prefer-setting-definitions": "off"
     }
   }
 ]);

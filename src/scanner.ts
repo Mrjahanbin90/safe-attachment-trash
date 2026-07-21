@@ -106,9 +106,9 @@ export class UnusedAttachmentScanner {
     const markdownPattern = /!?\[[^\]]*\]\((?:<)?([^)>\s]+)(?:>)?(?:\s+["'][^"']*["'])?\)/g;
     const pathPattern = /(?:^|[\s"'([{=:,])([^\n\r"'()[\]{},=:]+?\.[a-zA-Z0-9]{1,10})(?=$|[\s"')\]}:,])/g;
 
-    for (const match of text.matchAll(wikiPattern)) if (match[1]) candidates.add(match[1]);
-    for (const match of text.matchAll(markdownPattern)) if (match[1]) candidates.add(match[1]);
-    for (const match of text.matchAll(pathPattern)) if (match[1]) candidates.add(match[1].trim());
+    this.addRegexMatches(text, wikiPattern, candidates, false);
+    this.addRegexMatches(text, markdownPattern, candidates, false);
+    this.addRegexMatches(text, pathPattern, candidates, true);
 
     const trimmed = text.trim();
     if (trimmed.length > 0 && trimmed.length < 500 && /\.[a-zA-Z0-9]{1,10}(?:$|[#?])/.test(trimmed)) {
@@ -116,6 +116,21 @@ export class UnusedAttachmentScanner {
     }
 
     for (const candidate of candidates) this.resolveReference(candidate, sourcePath, output);
+  }
+
+
+  private addRegexMatches(text: string, pattern: RegExp, output: Set<string>, trim: boolean): void {
+    pattern.lastIndex = 0;
+    let match: RegExpExecArray | null = pattern.exec(text);
+    while (match !== null) {
+      const captured = match[1];
+      if (typeof captured === "string" && captured.length > 0) {
+        const value = trim ? captured.trim() : captured;
+        if (value.length > 0) output.add(value);
+      }
+      if (match[0].length === 0) pattern.lastIndex += 1;
+      match = pattern.exec(text);
+    }
   }
 
   private resolveReference(rawLink: string, sourcePath: string, output: Set<string>): void {

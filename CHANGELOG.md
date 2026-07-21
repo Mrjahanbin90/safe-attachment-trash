@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1
+
+- Restored compatibility with the current public app release line and lowered `minAppVersion` to `1.8.7`.
+- Removed all use of the 1.13-only declarative settings API.
+- Pinned development typings to the public 1.12 API line.
+- Fixed all unsafe regex match calls reported in `src/scanner.ts`.
+- Expanded the README into complete English and Persian user guides.
+- Added separate English and Persian interface illustrations for scanning, settings, protected files, and trash actions.
+
+
 ## 0.4.0
 
 - Added optional automatic scanning when the panel opens.
