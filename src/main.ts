@@ -1,9 +1,15 @@
-import { Menu, Notice, Plugin, TFile } from "obsidian";
-import { ConfirmModal, ScanReviewModal } from "./modals";
+import { Menu, normalizePath, Notice, Plugin, TFile } from "obsidian";
+import { ConfirmModal } from "./modals";
 import { UnusedAttachmentScanner } from "./scanner";
 import { DEFAULT_SETTINGS, SafeTrashSettingTab } from "./settings";
 import { SafeTrashStore } from "./store";
-import type { PersistedPluginData, SafeTrashSettings, ScanCandidate, TrashRecord } from "./types";
+import type {
+  PersistedPluginData,
+  ProtectedFileRecord,
+  SafeTrashSettings,
+  ScanCandidate,
+  TrashRecord
+} from "./types";
 import { SafeTrashView, VIEW_TYPE_SAFE_TRASH } from "./view";
 import { SafeTrashPreviewView, VIEW_TYPE_SAFE_TRASH_PREVIEW } from "./preview";
 import { resolveLanguage, translate } from "./i18n";
@@ -13,6 +19,12 @@ interface ScanOptions {
   silentWhenEmpty?: boolean;
 }
 
+export interface MoveCandidatesResult {
+  moved: number;
+  skipped: number;
+  failed: number;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -20,11 +32,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export default class SafeAttachmentTrashPlugin extends Plugin {
   settings: SafeTrashSettings = { ...DEFAULT_SETTINGS };
   store!: SafeTrashStore;
+  lastScanAt: number | null = null;
   private storedRecords: TrashRecord[] = [];
+  private protectedFiles: ProtectedFileRecord[] = [];
+  private candidates: ScanCandidate[] = [];
   private storeReady: Promise<void> = Promise.resolve();
   private saveQueue: Promise<void> = Promise.resolve();
   private scanInProgress = false;
-  private scanReviewOpen = false;
 
   get language(): AppLanguage {
     return resolveLanguage(this.settings.language);
@@ -32,6 +46,10 @@ export default class SafeAttachmentTrashPlugin extends Plugin {
 
   get locale(): string {
     return this.language === "fa" ? "fa-IR" : "en-US";
+  }
+
+  get isScanning(): boolean {
+    return this.scanInProgress;
   }
 
   t(key: TranslationKey, params: Record<string, string | number> = {}): string {
@@ -91,6 +109,24 @@ export default class SafeAttachmentTrashPlugin extends Plugin {
         .catch(() => undefined);
     }));
 
+    this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
+      if (!(file instanceof TFile)) return;
+      const normalizedOldPath = normalizePath(oldPath);
+      let changed = false;
+      const protectedFile = this.protectedFiles.find((item) => item.path === normalizedOldPath);
+      if (protectedFile) {
+        protectedFile.path = normalizePath(file.path);
+        changed = true;
+      }
+      const candidate = this.candidates.find((item) => item.path === normalizedOldPath);
+      if (candidate) {
+        candidate.path = normalizePath(file.path);
+        candidate.name = file.name;
+        changed = true;
+      }
+      if (changed) void this.saveState().then(() => this.refreshOpenViews());
+    }));
+
     this.storeReady = new Promise((resolve) => {
       this.app.workspace.onLayoutReady(() => {
         void this.initializeStore().finally(resolve);
@@ -98,11 +134,27 @@ export default class SafeAttachmentTrashPlugin extends Plugin {
     });
   }
 
+  getScanCandidates(): ScanCandidate[] {
+    return this.candidates.map((candidate) => ({ ...candidate }));
+  }
+
+  getProtectedFiles(): ProtectedFileRecord[] {
+    return this.protectedFiles
+      .map((record) => ({ ...record }))
+      .sort((a, b) => a.path.localeCompare(b.path));
+  }
+
+  isProtected(path: string): boolean {
+    const normalized = normalizePath(path);
+    return this.protectedFiles.some((record) => record.path === normalized);
+  }
+
   async saveState(): Promise<void> {
     const snapshot: PersistedPluginData = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       settings: { ...this.settings },
-      records: this.storedRecords.map((record) => ({ ...record }))
+      records: this.storedRecords.map((record) => ({ ...record })),
+      protectedFiles: this.protectedFiles.map((record) => ({ ...record }))
     };
     this.saveQueue = this.saveQueue
       .catch(() => undefined)
@@ -120,7 +172,7 @@ export default class SafeAttachmentTrashPlugin extends Plugin {
     if (existing) {
       await this.app.workspace.revealLeaf(existing);
       await this.syncTrash();
-      await this.scanUnused({ silentWhenEmpty: true });
+      if (this.settings.autoScanOnPanelOpen) await this.scanUnused({ silentWhenEmpty: true });
       return;
     }
 
@@ -150,6 +202,17 @@ export default class SafeAttachmentTrashPlugin extends Plugin {
     await this.app.workspace.revealLeaf(leaf);
   }
 
+  async openVaultFile(path: string): Promise<void> {
+    const file = this.app.vault.getFileByPath(normalizePath(path));
+    if (!file) {
+      new Notice(this.t("fileNoLongerExists"));
+      return;
+    }
+    const leaf = this.app.workspace.getLeaf("tab");
+    await leaf.openFile(file);
+    await this.app.workspace.revealLeaf(leaf);
+  }
+
   async syncTrash(): Promise<void> {
     await this.storeReady;
     await this.store.reconcile();
@@ -158,55 +221,92 @@ export default class SafeAttachmentTrashPlugin extends Plugin {
 
   async scanUnused(options: ScanOptions = {}): Promise<void> {
     await this.storeReady;
-    if (this.scanInProgress || this.scanReviewOpen) return;
+    if (this.scanInProgress) return;
     this.scanInProgress = true;
+    await this.refreshOpenViews();
     if (!options.silentWhenEmpty) new Notice(this.t("scanning"));
 
-    let candidates: ScanCandidate[];
     try {
-      const scanner = new UnusedAttachmentScanner(this.app, this.settings);
-      candidates = await scanner.scan();
+      const scanner = new UnusedAttachmentScanner(this.app, this.settings, this.protectedPathSet());
+      this.candidates = await scanner.scan();
+      this.lastScanAt = Date.now();
+      if (!options.silentWhenEmpty) {
+        new Notice(this.candidates.length === 0
+          ? this.t("noUnused")
+          : this.t("scanResult", { count: this.candidates.length }));
+      }
     } catch (error) {
       new Notice(this.t("error", { error: error instanceof Error ? error.message : String(error) }));
-      return;
     } finally {
       this.scanInProgress = false;
-    }
-
-    if (candidates.length === 0) {
-      if (!options.silentWhenEmpty) new Notice(this.t("noUnused"));
       await this.refreshOpenViews();
-      return;
+    }
+  }
+
+  async moveCandidates(paths: string[]): Promise<MoveCandidatesResult> {
+    await this.storeReady;
+    const requested = new Set(paths.map(normalizePath));
+    if (requested.size === 0) return { moved: 0, skipped: 0, failed: 0 };
+
+    const scanner = new UnusedAttachmentScanner(this.app, this.settings, this.protectedPathSet());
+    const currentCandidates = await scanner.scan();
+    const eligible = new Set(currentCandidates.map((candidate) => candidate.path));
+    let moved = 0;
+    let failed = 0;
+    let skipped = 0;
+    const movedPaths = new Set<string>();
+
+    for (const path of requested) {
+      if (!eligible.has(path)) {
+        skipped += 1;
+        continue;
+      }
+      const file = this.app.vault.getFileByPath(path);
+      if (!file) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        await this.store.moveToTrash(file, this.t("unusedReason"));
+        moved += 1;
+        movedPaths.add(path);
+      } catch {
+        failed += 1;
+      }
     }
 
-    this.scanReviewOpen = true;
-    new ScanReviewModal(
-      this.app,
-      this,
-      candidates,
-      async (paths) => {
-        let moved = 0;
-        let failed = 0;
-        for (const path of paths) {
-          const file = this.app.vault.getFileByPath(path);
-          if (!file) {
-            failed += 1;
-            continue;
-          }
-          try {
-            await this.store.moveToTrash(file, this.t("unusedReason"));
-            moved += 1;
-          } catch {
-            failed += 1;
-          }
-        }
-        new Notice(this.t("moveResult", { moved, failed }));
-        await this.syncTrash();
-      },
-      () => {
-        this.scanReviewOpen = false;
-      }
-    ).open();
+    this.candidates = currentCandidates.filter((candidate) => !movedPaths.has(candidate.path));
+    new Notice(this.t("moveResult", { moved, skipped, failed }));
+    await this.syncTrash();
+    return { moved, skipped, failed };
+  }
+
+  async protectPaths(paths: string[]): Promise<number> {
+    const existing = new Set(this.protectedFiles.map((record) => record.path));
+    let added = 0;
+    for (const rawPath of paths) {
+      const path = normalizePath(rawPath);
+      if (existing.has(path)) continue;
+      this.protectedFiles.push({ path, addedAt: Date.now() });
+      existing.add(path);
+      added += 1;
+    }
+    this.candidates = this.candidates.filter((candidate) => !existing.has(candidate.path));
+    await this.saveState();
+    await this.refreshOpenViews();
+    if (added > 0) new Notice(this.t("protectedResult", { count: added }));
+    return added;
+  }
+
+  async unprotectPaths(paths: string[]): Promise<number> {
+    const selected = new Set(paths.map(normalizePath));
+    const before = this.protectedFiles.length;
+    this.protectedFiles = this.protectedFiles.filter((record) => !selected.has(record.path));
+    const removed = before - this.protectedFiles.length;
+    await this.saveState();
+    await this.refreshOpenViews();
+    if (removed > 0) new Notice(this.t("unprotectedResult", { count: removed }));
+    return removed;
   }
 
   async refreshOpenViews(): Promise<void> {
@@ -216,6 +316,10 @@ export default class SafeAttachmentTrashPlugin extends Plugin {
     for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_SAFE_TRASH_PREVIEW)) {
       if (leaf.view instanceof SafeTrashPreviewView) await leaf.view.refresh();
     }
+  }
+
+  private protectedPathSet(): Set<string> {
+    return new Set(this.protectedFiles.map((record) => normalizePath(record.path)));
   }
 
   private async initializeStore(): Promise<void> {
@@ -250,10 +354,21 @@ export default class SafeAttachmentTrashPlugin extends Plugin {
   private async loadState(): Promise<void> {
     const loaded: unknown = await this.loadData();
     const root = isRecord(loaded) ? loaded : {};
-    const settingsSource = root.schemaVersion === 2 && isRecord(root.settings) ? root.settings : root;
+    const settingsSource = (root.schemaVersion === 2 || root.schemaVersion === 3) && isRecord(root.settings)
+      ? root.settings
+      : root;
     this.settings = this.parseSettings(settingsSource);
-    this.storedRecords = root.schemaVersion === 2 && Array.isArray(root.records)
+    this.storedRecords = (root.schemaVersion === 2 || root.schemaVersion === 3) && Array.isArray(root.records)
       ? root.records.filter(isRecord).map((record) => record as unknown as TrashRecord)
+      : [];
+    this.protectedFiles = root.schemaVersion === 3 && Array.isArray(root.protectedFiles)
+      ? root.protectedFiles
+        .filter(isRecord)
+        .filter((record) => typeof record.path === "string")
+        .map((record) => ({
+          path: normalizePath(String(record.path)),
+          addedAt: typeof record.addedAt === "number" ? record.addedAt : Date.now()
+        }))
       : [];
   }
 
@@ -262,6 +377,9 @@ export default class SafeAttachmentTrashPlugin extends Plugin {
       language: data.language === "fa" || data.language === "en" || data.language === "auto"
         ? data.language
         : DEFAULT_SETTINGS.language,
+      autoScanOnPanelOpen: typeof data.autoScanOnPanelOpen === "boolean"
+        ? data.autoScanOnPanelOpen
+        : DEFAULT_SETTINGS.autoScanOnPanelOpen,
       extensions: typeof data.extensions === "string" ? data.extensions : DEFAULT_SETTINGS.extensions,
       excludedFolders: typeof data.excludedFolders === "string"
         ? data.excludedFolders

@@ -5,12 +5,18 @@ export type OriginalPathConfidence = "known" | "inferred" | "unknown";
 
 export interface SafeTrashSettings {
   language: LanguageMode;
+  autoScanOnPanelOpen: boolean;
   extensions: string;
   excludedFolders: string;
   minimumAgeHours: number;
   conflictBehavior: ConflictBehavior;
   scanCanvasFiles: boolean;
   recoveryFolder: string;
+}
+
+export interface ProtectedFileRecord {
+  path: string;
+  addedAt: number;
 }
 
 export interface TrashRecord {
@@ -29,9 +35,10 @@ export interface TrashRecord {
 }
 
 export interface PersistedPluginData {
-  schemaVersion: 2;
+  schemaVersion: 3;
   settings: SafeTrashSettings;
   records: TrashRecord[];
+  protectedFiles: ProtectedFileRecord[];
 }
 
 export interface LegacyTrashRecord {

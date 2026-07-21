@@ -3,7 +3,11 @@ import type { SafeTrashSettings, ScanCandidate } from "./types";
 import { extensionSet, parseCsvList, pathIsInside } from "./utils";
 
 export class UnusedAttachmentScanner {
-  constructor(private app: App, private settings: SafeTrashSettings) {}
+  constructor(
+    private app: App,
+    private settings: SafeTrashSettings,
+    private protectedPaths: ReadonlySet<string> = new Set<string>()
+  ) {}
 
   async scan(): Promise<ScanCandidate[]> {
     const usedPaths = await this.collectUsedPaths();
@@ -30,11 +34,13 @@ export class UnusedAttachmentScanner {
     usedPaths: Set<string>,
     cutoff: number
   ): boolean {
+    const normalizedPath = normalizePath(file.path);
     const ext = file.extension.toLowerCase();
-    if (!ext || ext === "md" || ext === "canvas") return false;
+    if (!ext || ext === "md" || ext === "canvas" || ext === "base") return false;
     if (!(allowedExtensions.has("*") || allowedExtensions.has(ext))) return false;
-    if (excludedFolders.some((folder) => pathIsInside(file.path, folder))) return false;
-    if (usedPaths.has(normalizePath(file.path))) return false;
+    if (excludedFolders.some((folder) => pathIsInside(normalizedPath, folder))) return false;
+    if (this.protectedPaths.has(normalizedPath)) return false;
+    if (usedPaths.has(normalizedPath)) return false;
     if (file.stat.mtime > cutoff) return false;
     return true;
   }
@@ -51,10 +57,8 @@ export class UnusedAttachmentScanner {
     for (const note of this.app.vault.getMarkdownFiles()) {
       const cache = this.app.metadataCache.getFileCache(note);
       const refs = [...(cache?.links ?? []), ...(cache?.embeds ?? [])];
-      for (const ref of refs) {
-        const destination = this.app.metadataCache.getFirstLinkpathDest(ref.link, note.path);
-        if (destination) used.add(normalizePath(destination.path));
-      }
+      for (const ref of refs) this.resolveReference(ref.link, note.path, used);
+      this.collectStructuredReferences(cache?.frontmatter, note.path, used);
     }
 
     if (this.settings.scanCanvasFiles) {
@@ -62,27 +66,76 @@ export class UnusedAttachmentScanner {
       for (const canvas of canvases) {
         try {
           const parsed: unknown = JSON.parse(await this.app.vault.cachedRead(canvas)) as unknown;
-          this.collectCanvasPaths(parsed, used);
+          this.collectStructuredReferences(parsed, canvas.path, used);
         } catch {
           // Ignore malformed canvas files.
         }
       }
     }
+
+    const bases = this.app.vault.getFiles().filter((file) => file.extension.toLowerCase() === "base");
+    for (const base of bases) {
+      try {
+        this.collectTextReferences(await this.app.vault.cachedRead(base), base.path, used);
+      } catch {
+        // Ignore unreadable Bases files.
+      }
+    }
+
     return used;
   }
 
-  private collectCanvasPaths(value: unknown, output: Set<string>): void {
+  private collectStructuredReferences(value: unknown, sourcePath: string, output: Set<string>): void {
+    if (typeof value === "string") {
+      this.collectTextReferences(value, sourcePath, output);
+      return;
+    }
     if (Array.isArray(value)) {
-      for (const child of value) this.collectCanvasPaths(child, output);
+      for (const child of value) this.collectStructuredReferences(child, sourcePath, output);
       return;
     }
     if (!value || typeof value !== "object") return;
-    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-      if (key === "file" && typeof child === "string") {
-        output.add(normalizePath(child));
-      } else {
-        this.collectCanvasPaths(child, output);
-      }
+    for (const child of Object.values(value as Record<string, unknown>)) {
+      this.collectStructuredReferences(child, sourcePath, output);
     }
+  }
+
+  private collectTextReferences(text: string, sourcePath: string, output: Set<string>): void {
+    const candidates = new Set<string>();
+    const wikiPattern = /!?\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|[^\]]+)?\]\]/g;
+    const markdownPattern = /!?\[[^\]]*\]\((?:<)?([^)>\s]+)(?:>)?(?:\s+["'][^"']*["'])?\)/g;
+    const pathPattern = /(?:^|[\s"'([{=:,])([^\n\r"'()[\]{},=:]+?\.[a-zA-Z0-9]{1,10})(?=$|[\s"')\]}:,])/g;
+
+    for (const match of text.matchAll(wikiPattern)) if (match[1]) candidates.add(match[1]);
+    for (const match of text.matchAll(markdownPattern)) if (match[1]) candidates.add(match[1]);
+    for (const match of text.matchAll(pathPattern)) if (match[1]) candidates.add(match[1].trim());
+
+    const trimmed = text.trim();
+    if (trimmed.length > 0 && trimmed.length < 500 && /\.[a-zA-Z0-9]{1,10}(?:$|[#?])/.test(trimmed)) {
+      candidates.add(trimmed);
+    }
+
+    for (const candidate of candidates) this.resolveReference(candidate, sourcePath, output);
+  }
+
+  private resolveReference(rawLink: string, sourcePath: string, output: Set<string>): void {
+    let link = rawLink.trim().replace(/^<|>$/g, "");
+    if (!link || link.startsWith("#") || /^(?:https?|data|mailto|file):/i.test(link)) return;
+    try {
+      link = decodeURIComponent(link);
+    } catch {
+      // Keep the original string when it is not valid URI encoding.
+    }
+    link = link.split("|")[0]?.split("#")[0]?.split("?")[0]?.trim() ?? "";
+    if (!link) return;
+
+    const destination = this.app.metadataCache.getFirstLinkpathDest(link, sourcePath);
+    if (destination) {
+      output.add(normalizePath(destination.path));
+      return;
+    }
+
+    const direct = this.app.vault.getFileByPath(normalizePath(link));
+    if (direct) output.add(normalizePath(direct.path));
   }
 }

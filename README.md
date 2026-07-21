@@ -1,115 +1,99 @@
 # Safe Attachment Trash
 
-## فارسی
+Safely find unused attachments, review them before moving anything, protect files you want to keep, and restore trashed files to their original folders.
 
-افزونه‌ای برای Obsidian که فایل‌های بلااستفاده را پیدا می‌کند، فایل‌های انتخاب‌شده را با API رسمی حذف Obsidian پردازش می‌کند، نسخه قابل‌بازیابی را داخل `.trash` خود Vault نگه می‌دارد و مسیر اصلی را برای بازگردانی دقیق ذخیره می‌کند.
+> **Nothing is moved or deleted during a scan.** The plugin only builds a review list. A file moves to trash only after you choose it.
 
-### قابلیت‌ها
+![Unused-file review list](docs/images/overview.svg)
 
-- اسکن خودکار فایل‌های بلااستفاده هنگام بازکردن پنل افزونه
-- بازبینی و انتخاب فایل‌ها پیش از انتقال
-- استفاده از Trash داخلی Vault در مسیر `.trash`؛ بدون پوشه‌ی مستقل `.safe-attachment-trash`
-- ذخیره‌ی مسیر اصلی و اطلاعات بازیابی در `data.json` افزونه با `Plugin.loadData()` و `Plugin.saveData()`
-- نمایش همه فایل‌های قابل‌دسترسی داخل `.trash`، حتی فایل‌هایی که خارج از افزونه وارد Trash شده‌اند
-- ثبت مسیر حذف‌های دستی Obsidian در زمانی که افزونه فعال است و فایل در Trash محلی قرار می‌گیرد
-- تشخیص احتمالی مسیر اصلی فایل‌های قدیمی که ساختار پوشه‌شان داخل `.trash` حفظ شده است
-- انتقال فایل‌های با مسیر نامشخص به پوشه قابل‌تنظیم `Recovered from Trash`
-- بازکردن عکس، PDF، صوت، ویدئو و فایل‌های متنی در تب اصلی Obsidian
-- بازگردانی تکی یا گروهی به مسیر اصلی
-- حذف کامل تکی یا گروهی با تأیید صریح
-- مدیریت تداخل هنگام بازگردانی: تغییر نام، ردکردن یا جایگزینی
-- مهاجرت امن فایل‌های نسخه‌های قبلی از `.safe-attachment-trash` به `.trash`
-- رابط فارسی و انگلیسی
-- تنظیمات قابل جست‌وجو با Declarative Settings API در Obsidian 1.13+
-- بدون اینترنت، Telemetry و حساب کاربری
+## How it works
 
-### رفتار Trash و تنظیم کاربر
+1. Open **Safe Attachment Trash** from the ribbon or Command palette.
+2. Review the files in the **Unused** tab. Click a file to open it before making a decision.
+3. Choose **Move to trash** or **Never suggest**.
+4. Use the **Trash** tab to preview, restore, or permanently delete trashed files.
 
-افزونه برای حذف فایل اصلی از `FileManager.trashFile()` استفاده می‌کند؛ بنابراین انتخاب کاربر در بخش **Deleted files** رعایت می‌شود.
+## Main features
 
-برای اینکه قابلیت پیش‌نمایش و بازیابی همیشه باقی بماند:
+- Optional automatic scanning when the panel opens.
+- Manual **Scan and refresh** mode when automatic scanning is disabled.
+- Scans never move or delete files automatically.
+- Opens images, PDFs, audio, video, and other supported attachments before removal.
+- **Protected files** list for attachments that should never be suggested again.
+- Checks links, embeds, note properties/frontmatter, Canvas files, and Bases files.
+- Re-checks selected files immediately before moving them, preventing stale scan results from removing newly used files.
+- Uses the app's trash behavior and remembers original paths for restoration.
+- Restore or permanently delete one file or many files at once.
+- Persian and English interface.
+- No account, network access, telemetry, or advertisements.
 
-- اگر Obsidian فایل را داخل `.trash` محلی قرار دهد، همان فایل مدیریت می‌شود.
-- اگر تنظیم کاربر فایل را به Trash سیستم‌عامل بفرستد یا حذف دائمی کند، افزونه یک نسخه‌ی بازیابی داخل `.trash` محلی Vault می‌سازد.
+## Automatic or manual scanning
 
-در حالت Trash سیستم‌عامل ممکن است یک نسخه هم در Recycle Bin یا Trash سیستم باقی بماند. افزونه فقط نسخه‌ی داخل `.trash` Vault را مدیریت می‌کند.
+Open **Settings → Safe Attachment Trash** and choose whether the panel scans automatically when opened.
 
-### مسیرهای نامشخص
+- **Enabled:** opening the panel refreshes the review list.
+- **Disabled:** scanning happens only when you press **Scan and refresh** or run the scan command.
 
-برای فایل‌هایی که افزونه انتقال داده یا حذفشان را هنگام فعال‌بودن مشاهده کرده است، مسیر اصلی ذخیره می‌شود. فایل‌هایی که از قبل داخل `.trash` بوده‌اند ممکن است متادیتای مسیر اصلی نداشته باشند. در این حالت:
+In both modes, scanning is read-only. It never moves files.
 
-- اگر ساختار مسیر قابل استنباط باشد، با برچسب «مسیر احتمالی» نمایش داده می‌شود.
-- در غیر این صورت، فایل هنگام بازیابی به پوشه‌ی `Recovered from Trash` یا پوشه‌ای که در تنظیمات تعیین شده منتقل می‌شود.
+![Automatic scan setting](docs/images/settings.svg)
 
-### نصب دستی
+## Protect files from future suggestions
 
-1. فایل‌های `main.js`، `manifest.json` و `styles.css` را داخل این مسیر قرار بده:
+Some files may be intentionally kept even though they are not currently linked.
 
-   `YourVault/.obsidian/plugins/safe-attachment-trash/`
+From the **Unused** tab, choose **Never suggest**. The file stays in its current folder and moves to the **Protected** tab. It will be excluded from future scans until you choose **Suggest again**.
 
-2. Obsidian را Reload کن.
-3. به `Settings → Community plugins` برو.
-4. افزونه `Safe Attachment Trash` را فعال کن.
+## Bases and properties
 
-### حریم خصوصی و دسترسی‌ها
+Attachments referenced in note properties are treated as used, including single values and lists such as:
 
-- افزونه برای پیدا کردن فایل‌های بلااستفاده مسیر فایل‌های Vault و لینک‌های یادداشت‌ها را بررسی می‌کند.
-- برای خواندن و مدیریت `.trash` از Adapter API استفاده می‌شود، چون پوشه‌های مخفی از طریق Vault API قابل مشاهده نیستند.
-- هیچ داده‌ای از Vault خارج نمی‌شود و هیچ درخواست شبکه‌ای انجام نمی‌شود.
-
+```yaml
 ---
+cover: "[[Attachments/book-cover.jpg]]"
+images:
+  - "[[Attachments/page-1.png]]"
+  - "[[Attachments/page-2.png]]"
+---
+```
 
-## English
+The scanner also checks direct attachment paths stored in `.base` files.
 
-An Obsidian plugin that finds unused attachments, processes approved deletions through Obsidian's official file-management API, keeps the recoverable copy in the vault's built-in `.trash`, and remembers original paths for precise restoration.
+## Safety notes
 
-### Features
+- Back up important vaults before using any cleanup tool.
+- Review files before moving them.
+- Permanent deletion from the Trash tab cannot be undone by this plugin.
+- If another file appears at the original restore path, the conflict behavior can be changed in settings.
 
-- Automatically scans for unused attachments when the panel opens
-- Lets users review and select files before moving them
-- Uses the vault's built-in `.trash`; no separate `.safe-attachment-trash` storage
-- Persists settings and restore metadata through `Plugin.loadData()` and `Plugin.saveData()`
-- Lists accessible files already present in `.trash`, including files not moved by the plugin
-- Records manual Obsidian deletions while the plugin is active when they land in local trash
-- Infers an original path for older trash files when their folder structure is preserved
-- Restores unknown-path files to the configurable `Recovered from Trash` folder
-- Opens images, PDFs, audio, video, and text files in a full workspace tab
-- Restores one file or selected files
-- Permanently deletes one file or selected files after explicit confirmation
-- Handles restore conflicts by renaming, skipping, or overwriting
-- Safely migrates previous `.safe-attachment-trash` contents into `.trash`
-- Persian and English interface
-- Searchable settings using Obsidian 1.13+ declarative settings
-- No network requests, telemetry, or accounts
+<details>
+<summary>راهنمای کوتاه فارسی</summary>
 
-### Trash behavior and user preference
+1. پنل افزونه را باز کن.
+2. فایل‌های پیدا‌شده در تب **بلااستفاده** فقط برای بررسی نمایش داده می‌شوند و خودکار حذف نمی‌شوند.
+3. روی فایل کلیک کن تا باز شود.
+4. برای انتقال، **انتقال به Trash** را بزن.
+5. برای فایل‌هایی که باید همیشه نگه داشته شوند، **دیگر پیشنهاد نده** را انتخاب کن.
+6. فایل‌های منتقل‌شده از تب **Trash** قابل مشاهده و بازگردانی هستند.
 
-The plugin uses `FileManager.trashFile()` for the original file, so the user's **Deleted files** preference is respected.
+اسکن خودکار را می‌توانی از تنظیمات خاموش کنی؛ در آن حالت فقط دکمه **اسکن و تازه‌سازی** بررسی را انجام می‌دهد.
 
-To keep in-app preview and restoration available:
+</details>
 
-- When Obsidian moves the file to local `.trash`, the plugin manages that file directly.
-- When the user's preference sends the original to the operating-system trash or deletes it permanently, the plugin creates a recoverable copy inside the vault's local `.trash`.
+<details>
+<summary>Technical details</summary>
 
-With system trash enabled, another copy may remain in the operating system's Recycle Bin or Trash. The plugin manages only the copy inside the vault's `.trash`.
+- The plugin enumerates vault files because unused-file detection requires comparing attachments with references across notes, properties, Canvas, and Bases files.
+- Plugin settings, protected paths, and restore metadata are stored with the standard plugin data API.
+- Hidden local trash files are accessed through the Adapter API because hidden folders are not exposed by the normal Vault file list.
+- File moves use `FileManager.trashFile()` so the user's deletion preference is respected.
 
-### Unknown original paths
+</details>
 
-Files moved by the plugin, or observed while the plugin is active, retain their original path. Pre-existing trash files may not contain enough metadata to reconstruct it. In that case:
+## Reporting issues
 
-- A preserved folder structure is shown as an inferred path.
-- Otherwise, restoration uses the configurable `Recovered from Trash` folder.
+Please include the app version, plugin version, operating system, and a small example showing the unexpected result.
 
-### Manual installation
+## License
 
-Copy `main.js`, `manifest.json`, and `styles.css` into:
-
-`YourVault/.obsidian/plugins/safe-attachment-trash/`
-
-Reload Obsidian and enable **Safe Attachment Trash** under Community plugins.
-
-### Privacy and access
-
-- The plugin enumerates vault file paths and note links to detect unused attachments.
-- It uses the Adapter API only where required to access the hidden `.trash` folder.
-- No vault data leaves the device and no network requests are made.
+MIT

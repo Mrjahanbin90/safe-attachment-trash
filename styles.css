@@ -321,3 +321,44 @@
     flex-direction: column;
   }
 }
+
+.sat-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.sat-tab {
+  white-space: nowrap;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+
+.sat-tab.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.sat-scan-status {
+  margin: -4px 0 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  font-size: var(--font-ui-smaller);
+}
+
+.sat-record-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  .sat-toolbar button,
+  .sat-record-actions button {
+    flex: 1 1 auto;
+  }
+}

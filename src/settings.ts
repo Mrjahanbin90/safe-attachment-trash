@@ -5,6 +5,7 @@ import type { ConflictBehavior, LanguageMode, SafeTrashSettings } from "./types"
 
 export const DEFAULT_SETTINGS: SafeTrashSettings = {
   language: "auto",
+  autoScanOnPanelOpen: true,
   extensions: "png, jpg, jpeg, gif, webp, bmp, svg, avif, pdf, mp3, wav, ogg, m4a, flac, mp4, webm, mov, m4v, doc, docx, xls, xlsx, ppt, pptx, zip, rar, 7z, txt, csv",
   excludedFolders: "Templates",
   minimumAgeHours: 0,
@@ -35,6 +36,16 @@ export class SafeTrashSettingTab extends PluginSettingTab {
             fa: this.plugin.t("languagePersian"),
             en: this.plugin.t("languageEnglish")
           }
+        }
+      },
+      {
+        name: this.plugin.t("settingsAutoScan"),
+        desc: this.plugin.t("settingsAutoScanDesc"),
+        aliases: ["automatic scan", "auto scan", "اسکن خودکار"],
+        control: {
+          type: "toggle",
+          key: "autoScanOnPanelOpen",
+          defaultValue: DEFAULT_SETTINGS.autoScanOnPanelOpen
         }
       },
       {
@@ -123,6 +134,10 @@ export class SafeTrashSettingTab extends PluginSettingTab {
         await this.plugin.saveState();
         await this.plugin.refreshLanguage();
         this.update();
+        break;
+      case "autoScanOnPanelOpen":
+        this.plugin.settings.autoScanOnPanelOpen = value === true;
+        await this.plugin.saveState();
         break;
       case "extensions":
         this.plugin.settings.extensions = typeof value === "string" ? value : DEFAULT_SETTINGS.extensions;

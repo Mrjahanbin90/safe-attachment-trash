@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650">
+  <rect width="1200" height="650" rx="24" fill="#181818"/>
+  <rect x="70" y="55" width="1060" height="540" rx="18" fill="#222" stroke="#444"/>
+  <text x="115" y="115" fill="#f2f2f2" font-family="Arial, sans-serif" font-size="32" font-weight="700">Settings</text>
+  <g font-family="Arial, sans-serif">
+    <text x="115" y="180" fill="#eee" font-size="23">Scan automatically when the panel opens</text>
+    <text x="115" y="212" fill="#999" font-size="16">Build the review list automatically. Scanning never moves or deletes files.</text>
+    <rect x="940" y="165" width="90" height="44" rx="22" fill="#7c3aed"/><circle cx="1008" cy="187" r="17" fill="white"/>
+    <line x1="115" y1="245" x2="1085" y2="245" stroke="#444"/>
+    <text x="115" y="295" fill="#eee" font-size="23">File extensions</text>
+    <text x="115" y="327" fill="#999" font-size="16">Choose which attachment types are included in scans.</text>
+    <rect x="690" y="274" width="340" height="70" rx="10" fill="#181818" stroke="#555"/>
+    <text x="715" y="315" fill="#ddd" font-size="17">png, jpg, pdf, mp3, mp4…</text>
+    <line x1="115" y1="380" x2="1085" y2="380" stroke="#444"/>
+    <text x="115" y="430" fill="#eee" font-size="23">Excluded folders</text>
+    <text x="115" y="462" fill="#999" font-size="16">Skip entire folders and their subfolders.</text>
+    <rect x="690" y="410" width="340" height="70" rx="10" fill="#181818" stroke="#555"/>
+    <text x="715" y="451" fill="#ddd" font-size="17">Templates, Archive</text>
+    <line x1="115" y1="515" x2="1085" y2="515" stroke="#444"/>
+    <text x="115" y="558" fill="#aaa" font-size="17">Protected files are managed from the Protected tab.</text>
+  </g>
+</svg>

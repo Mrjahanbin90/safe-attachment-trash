@@ -1,18 +1,21 @@
 # Changelog
 
+## 0.4.0
+
+- Added optional automatic scanning when the panel opens.
+- Changed scanning to a read-only review process: scans never move or delete files.
+- Added an Unused tab with open, move-to-trash, and never-suggest actions.
+- Added a Protected tab and bulk protection management.
+- Added a manual Scan and refresh workflow.
+- Added frontmatter/property and Bases reference detection.
+- Added a final re-check before moving selected files to trash.
+- Reworked the README with a user-focused guide and interface illustrations.
+
 ## 0.3.1
 
-- Remove the redundant product name from the plugin description to satisfy community directory validation.
+- Fixed the community-directory manifest description validation.
 
 ## 0.3.0
 
-- Store recoverable files in Obsidian's built-in `.trash` instead of `.safe-attachment-trash`.
-- Use `FileManager.trashFile()` to respect the user's deletion preference.
-- Create a local `.trash` recovery copy when the original is sent to system trash or permanently deleted.
-- Persist restore metadata through plugin data.
-- Discover and preview existing local-trash files.
-- Track original paths for plugin moves and observable local manual deletions.
-- Restore unknown-path files to a configurable recovery folder.
-- Safely migrate legacy plugin-trash files.
-- Adopt Obsidian 1.13 declarative settings and searchable settings.
-- Add lint and automated storage/migration tests to the release workflow.
+- Moved recoverable files to the local `.trash` workflow.
+- Added original-path metadata, migration, and declarative settings.

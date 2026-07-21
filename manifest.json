@@ -1,9 +1,9 @@
 {
   "id": "safe-attachment-trash",
   "name": "Safe Attachment Trash",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "minAppVersion": "1.13.0",
-  "description": "Find unused attachments, review and preview files in the local trash, restore original paths, or delete permanently.",
+  "description": "Safely find unused attachments, review them before moving to trash, protect files from future suggestions, restore original paths, or delete permanently.",
   "author": "MrJahanbin",
   "isDesktopOnly": false,
   "authorUrl": "https://github.com/Mrjahanbin90"
