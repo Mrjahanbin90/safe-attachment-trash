@@ -9,6 +9,7 @@ permissions:
   contents: write
   id-token: write
   attestations: write
+  artifact-metadata: write
 
 jobs:
   release:
@@ -19,13 +20,38 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: "22.x"
           cache: npm
 
+      - name: Pin npm version
+        run: npm install --global npm@11.6.1
+
+      - name: Show tool versions
+        run: |
+          node --version
+          npm --version
+          npm config get registry
+
+      - name: Verify package lock uses the public registry
+        shell: bash
+        run: |
+          if grep -Eq "applied-caas|internal\.api\.openai\.org" package-lock.json; then
+            echo "package-lock.json contains a private/internal registry URL."
+            echo "Regenerate it with https://registry.npmjs.org/ before releasing."
+            exit 1
+          fi
+
       - name: Install dependencies
-        run: npm ci
+        shell: bash
+        run: |
+          if ! npm ci --registry=https://registry.npmjs.org/; then
+            echo "npm ci failed — printing npm debug logs:"
+            ls -lah "$HOME/.npm/_logs" || true
+            sed -n '1,400p' "$HOME"/.npm/_logs/*.log || true
+            exit 1
+          fi
 
       - name: Type-check
         run: npm run typecheck

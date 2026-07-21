@@ -1,6 +1,6 @@
 {
   "name": "safe-attachment-trash",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "scripts": {
     "build": "esbuild src/main.ts --bundle --external:obsidian --format=cjs --target=es2018 --outfile=main.js",
@@ -16,5 +16,9 @@
     "@typescript-eslint/parser": "^8.65.0",
     "@typescript-eslint/eslint-plugin": "^8.65.0",
     "eslint-plugin-obsidianmd": "^0.4.1"
+  },
+  "packageManager": "npm@11.6.1",
+  "engines": {
+    "node": ">=22.9.0"
   }
 }
