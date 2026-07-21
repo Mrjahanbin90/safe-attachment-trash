@@ -1,0 +1,14 @@
+{
+  "name": "safe-attachment-trash",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --external:obsidian --format=cjs --target=es2018 --outfile=main.js",
+    "dev": "esbuild src/main.ts --bundle --external:obsidian --format=cjs --target=es2018 --outfile=main.js --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1",
+    "obsidian": "latest",
+    "typescript": "^5.0.0"
+  }
+}
