@@ -1,5 +1,7 @@
 export type ConflictBehavior = "rename" | "skip" | "overwrite";
 export type LanguageMode = "auto" | "fa" | "en";
+export type TrashRecordSource = "plugin" | "observed" | "discovered" | "legacy";
+export type OriginalPathConfidence = "known" | "inferred" | "unknown";
 
 export interface SafeTrashSettings {
   language: LanguageMode;
@@ -8,13 +10,35 @@ export interface SafeTrashSettings {
   minimumAgeHours: number;
   conflictBehavior: ConflictBehavior;
   scanCanvasFiles: boolean;
+  recoveryFolder: string;
 }
 
 export interface TrashRecord {
   id: string;
+  originalPath: string | null;
+  originalPathConfidence: OriginalPathConfidence;
+  trashPath: string | null;
+  fileName: string;
+  extension: string;
+  size: number;
+  trashedAt: number;
+  originalMtime: number;
+  reason: string;
+  source: TrashRecordSource;
+  fingerprint?: string;
+}
+
+export interface PersistedPluginData {
+  schemaVersion: 2;
+  settings: SafeTrashSettings;
+  records: TrashRecord[];
+}
+
+export interface LegacyTrashRecord {
+  id: string;
   originalPath: string;
   storedPath: string;
-  metadataPath: string;
+  metadataPath?: string;
   fileName: string;
   extension: string;
   size: number;
@@ -23,15 +47,21 @@ export interface TrashRecord {
   reason: string;
 }
 
-export interface TrashIndex {
-  version: 1;
-  records: TrashRecord[];
+export interface LegacyTrashIndex {
+  version: number;
+  records: LegacyTrashRecord[];
 }
 
 export interface ScanCandidate {
   path: string;
   name: string;
   extension: string;
+  size: number;
+  mtime: number;
+}
+
+export interface AdapterFileInfo {
+  path: string;
   size: number;
   mtime: number;
 }

@@ -78,11 +78,21 @@ export class SafeTrashPreviewView extends ItemView {
     const header = content.createDiv({ cls: "sat-file-view-header" });
     const info = header.createDiv({ cls: "sat-file-view-info" });
     info.createEl("h3", { text: record.fileName });
-    info.createDiv({ text: record.originalPath, cls: "sat-file-path" });
+    const originalPath = record.originalPath ?? this.plugin.t("originalUnknown");
+    info.createDiv({ text: originalPath, cls: "sat-file-path" });
+    if (record.originalPathConfidence !== "known") {
+      info.createDiv({
+        text: this.plugin.t(record.originalPathConfidence === "inferred" ? "originalInferred" : "recoveryDestination", {
+          path: this.plugin.store.getRestoreTarget(record, this.plugin.settings.recoveryFolder)
+        }),
+        cls: "sat-help"
+      });
+    }
     const meta = info.createDiv({ cls: "sat-preview-meta" });
     meta.createDiv({ text: this.plugin.t("size", { value: formatBytes(record.size) }) });
     meta.createDiv({ text: this.plugin.t("movedAt", { value: formatDate(record.trashedAt, this.plugin.locale) }) });
     meta.createDiv({ text: this.plugin.t("reason", { value: record.reason }) });
+    if (record.trashPath) meta.createDiv({ text: this.plugin.t("trashLocation", { value: record.trashPath }) });
 
     const actions = header.createDiv({ cls: "sat-preview-actions" });
     const restore = actions.createEl("button", { text: this.plugin.t("restore"), cls: "mod-cta" });
@@ -133,7 +143,7 @@ export class SafeTrashPreviewView extends ItemView {
 
   private async restore(record: TrashRecord): Promise<void> {
     try {
-      const restoredPath = await this.plugin.store.restore(record, this.plugin.settings.conflictBehavior);
+      const restoredPath = await this.plugin.store.restore(record, this.plugin.settings.conflictBehavior, this.plugin.settings.recoveryFolder);
       if (restoredPath) {
         new Notice(this.plugin.t("restoreSuccess", { path: restoredPath }));
         this.leaf.detach();

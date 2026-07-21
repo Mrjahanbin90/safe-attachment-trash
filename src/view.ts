@@ -29,6 +29,7 @@ export class SafeTrashView extends ItemView {
   async onOpen(): Promise<void> {
     this.containerEl.addClass("sat-view-root");
     this.render();
+    await this.plugin.syncTrash();
     void this.plugin.scanUnused({ silentWhenEmpty: true });
   }
 
@@ -52,7 +53,10 @@ export class SafeTrashView extends ItemView {
     const toolbar = content.createDiv({ cls: "sat-toolbar" });
     this.addToolbarButton(toolbar, this.plugin.t("restoreSelected"), "", () => this.restoreSelected());
     this.addToolbarButton(toolbar, this.plugin.t("deleteSelected"), "mod-warning", () => this.deleteSelected());
-    this.addToolbarButton(toolbar, this.plugin.t("refresh"), "", () => this.plugin.scanUnused({ silentWhenEmpty: false }));
+    this.addToolbarButton(toolbar, this.plugin.t("refresh"), "", async () => {
+      await this.plugin.syncTrash();
+      await this.plugin.scanUnused({ silentWhenEmpty: false });
+    });
 
     const pane = content.createDiv({ cls: "sat-list-pane" });
     const search = pane.createEl("input", {
@@ -117,7 +121,7 @@ export class SafeTrashView extends ItemView {
     const records = this.plugin.store.list();
     if (!query) return records;
     return records.filter((record) =>
-      `${record.fileName} ${record.originalPath} ${record.reason}`.toLocaleLowerCase().includes(query)
+      `${record.fileName} ${record.originalPath ?? ""} ${record.trashPath ?? ""} ${record.reason}`.toLocaleLowerCase().includes(query)
     );
   }
 
@@ -134,7 +138,14 @@ export class SafeTrashView extends ItemView {
 
     const details = row.createDiv({ cls: "sat-record-details" });
     details.createDiv({ text: record.fileName, cls: "sat-file-name" });
-    details.createDiv({ text: record.originalPath, cls: "sat-file-path" });
+    const pathText = record.originalPath ?? this.plugin.t("originalUnknown");
+    details.createDiv({ text: pathText, cls: "sat-file-path" });
+    if (record.originalPathConfidence !== "known") {
+      details.createSpan({
+        text: this.plugin.t(record.originalPathConfidence === "inferred" ? "inferredPathBadge" : "unknownPathBadge"),
+        cls: "sat-path-badge"
+      });
+    }
     details.createDiv({
       text: `${formatBytes(record.size)} • ${formatDate(record.trashedAt, this.plugin.locale)}`,
       cls: "sat-file-meta"
@@ -181,7 +192,7 @@ export class SafeTrashView extends ItemView {
 
   private async restoreOne(record: TrashRecord): Promise<void> {
     try {
-      const restoredPath = await this.plugin.store.restore(record, this.plugin.settings.conflictBehavior);
+      const restoredPath = await this.plugin.store.restore(record, this.plugin.settings.conflictBehavior, this.plugin.settings.recoveryFolder);
       if (restoredPath) new Notice(this.plugin.t("restoreSuccess", { path: restoredPath }));
       else new Notice(this.plugin.t("restoreSkipped"));
       await this.plugin.refreshOpenViews();
@@ -206,7 +217,7 @@ export class SafeTrashView extends ItemView {
     let failed = 0;
     for (const record of records) {
       try {
-        const result = await this.plugin.store.restore(record, this.plugin.settings.conflictBehavior);
+        const result = await this.plugin.store.restore(record, this.plugin.settings.conflictBehavior, this.plugin.settings.recoveryFolder);
         if (result) restored += 1;
         else skipped += 1;
       } catch {

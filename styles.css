@@ -288,3 +288,36 @@
     flex-direction: column;
   }
 }
+
+.sat-path-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 4px;
+  padding: 2px 7px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  font-size: var(--font-ui-smaller);
+}
+
+@media (max-width: 720px) {
+  .sat-view-root .view-content.sat-view,
+  .sat-preview-view-root .view-content.sat-file-view {
+    padding: 12px;
+  }
+
+  .sat-record {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .sat-record-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
+  .sat-file-view-header {
+    flex-direction: column;
+  }
+}
