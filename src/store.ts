@@ -86,7 +86,7 @@ export class SafeTrashStore {
 
   async restore(record: TrashRecord, behavior: ConflictBehavior): Promise<string | null> {
     const data = await this.read(record);
-    const target = await this.resolveRestoreTarget(record.originalPath, behavior);
+    const target = this.resolveRestoreTarget(record.originalPath, behavior);
     if (!target) return null;
 
     await this.ensureVisibleParent(target);
@@ -143,7 +143,7 @@ export class SafeTrashStore {
     return { deleted, failed };
   }
 
-  private async resolveRestoreTarget(originalPath: string, behavior: ConflictBehavior): Promise<string | null> {
+  private resolveRestoreTarget(originalPath: string, behavior: ConflictBehavior): string | null {
     const normalized = normalizePath(originalPath);
     const existing = this.app.vault.getAbstractFileByPath(normalized);
     if (!existing) return normalized;

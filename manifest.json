@@ -1,10 +1,10 @@
 {
   "id": "safe-attachment-trash",
   "name": "Safe Attachment Trash",
-  "version": "0.2.0",
-  "minAppVersion": "1.5.0",
-  "description": "Automatically find unused attachments, review them in a managed bilingual trash, restore them to their original location, or delete them permanently.",
+  "version": "0.2.1",
+  "minAppVersion": "1.8.7",
+  "description": "Automatically find unused attachments, review them in a managed bilingual trash, open previews in workspace tabs, restore original paths, or delete permanently.",
   "author": "MrJahanbin",
-  "authorUrl": "https://github.com/Mrjahanbin90",
-  "isDesktopOnly": false
+  "isDesktopOnly": false,
+  "authorUrl": "https://github.com/Mrjahanbin90"
 }

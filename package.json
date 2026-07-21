@@ -1,14 +1,20 @@
 {
   "name": "safe-attachment-trash",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "scripts": {
     "build": "esbuild src/main.ts --bundle --external:obsidian --format=cjs --target=es2018 --outfile=main.js",
-    "dev": "esbuild src/main.ts --bundle --external:obsidian --format=cjs --target=es2018 --outfile=main.js --watch"
+    "dev": "esbuild src/main.ts --bundle --external:obsidian --format=cjs --target=es2018 --outfile=main.js --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
   },
   "devDependencies": {
     "esbuild": "^0.28.1",
     "obsidian": "latest",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "eslint": "^9.39.2",
+    "@typescript-eslint/parser": "^8.65.0",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "eslint-plugin-obsidianmd": "^0.4.1"
   }
 }

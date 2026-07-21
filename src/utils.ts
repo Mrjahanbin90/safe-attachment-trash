@@ -1,4 +1,5 @@
 import { normalizePath } from "obsidian";
+import type { DataAdapter } from "obsidian";
 
 export const TRASH_ROOT = normalizePath(".safe-attachment-trash");
 export const TRASH_FILES = normalizePath(`${TRASH_ROOT}/files`);
@@ -85,7 +86,7 @@ export function isVideoExtension(extension: string): boolean {
   return new Set(["mp4", "webm", "mov", "m4v"]).has(extension.toLowerCase());
 }
 
-export async function ensureAdapterFolder(adapter: any, folderPath: string): Promise<void> {
+export async function ensureAdapterFolder(adapter: DataAdapter, folderPath: string): Promise<void> {
   const parts = normalizePath(folderPath).split("/").filter(Boolean);
   let current = "";
   for (const part of parts) {

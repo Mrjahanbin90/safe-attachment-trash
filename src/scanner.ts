@@ -43,7 +43,7 @@ export class UnusedAttachmentScanner {
     const used = new Set<string>();
     const resolved = this.app.metadataCache.resolvedLinks ?? {};
     for (const targets of Object.values(resolved)) {
-      for (const [targetPath, count] of Object.entries(targets as Record<string, number>)) {
+      for (const [targetPath, count] of Object.entries(targets)) {
         if (count > 0) used.add(normalizePath(targetPath));
       }
     }
@@ -61,7 +61,7 @@ export class UnusedAttachmentScanner {
       const canvases = this.app.vault.getFiles().filter((file) => file.extension.toLowerCase() === "canvas");
       for (const canvas of canvases) {
         try {
-          const parsed = JSON.parse(await this.app.vault.cachedRead(canvas));
+          const parsed: unknown = JSON.parse(await this.app.vault.cachedRead(canvas)) as unknown;
           this.collectCanvasPaths(parsed, used);
         } catch {
           // Ignore malformed canvas files.

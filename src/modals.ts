@@ -25,16 +25,20 @@ export class ConfirmModal extends Modal {
     const cancel = actions.createEl("button", { text: this.plugin.t("cancel") });
     cancel.addEventListener("click", () => this.close());
     const confirm = actions.createEl("button", { text: this.confirmText, cls: this.dangerous ? "mod-warning" : "mod-cta" });
-    confirm.addEventListener("click", async () => {
-      confirm.disabled = true;
-      try {
-        await this.onConfirm();
-        this.close();
-      } catch (error) {
-        new Notice(this.plugin.t("error", { error: error instanceof Error ? error.message : String(error) }));
-        confirm.disabled = false;
-      }
+    confirm.addEventListener("click", () => {
+      void this.handleConfirm(confirm);
     });
+  }
+
+  private async handleConfirm(confirm: HTMLButtonElement): Promise<void> {
+    confirm.disabled = true;
+    try {
+      await this.onConfirm();
+      this.close();
+    } catch (error) {
+      new Notice(this.plugin.t("error", { error: error instanceof Error ? error.message : String(error) }));
+      confirm.disabled = false;
+    }
   }
 
   onClose(): void {
@@ -117,18 +121,22 @@ export class ScanReviewModal extends Modal {
       updateControls();
     });
 
-    move.addEventListener("click", async () => {
-      move.disabled = true;
-      try {
-        await this.onMove([...this.selected]);
-        this.close();
-      } catch (error) {
-        new Notice(this.plugin.t("error", { error: error instanceof Error ? error.message : String(error) }));
-        updateControls();
-      }
+    move.addEventListener("click", () => {
+      void this.handleMove(move, updateControls);
     });
 
     updateControls();
+  }
+
+  private async handleMove(move: HTMLButtonElement, updateControls: () => void): Promise<void> {
+    move.disabled = true;
+    try {
+      await this.onMove([...this.selected]);
+      this.close();
+    } catch (error) {
+      new Notice(this.plugin.t("error", { error: error instanceof Error ? error.message : String(error) }));
+      updateControls();
+    }
   }
 
   onClose(): void {

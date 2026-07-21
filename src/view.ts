@@ -28,17 +28,17 @@ export class SafeTrashView extends ItemView {
 
   async onOpen(): Promise<void> {
     this.containerEl.addClass("sat-view-root");
-    await this.render();
+    this.render();
     void this.plugin.scanUnused({ silentWhenEmpty: true });
   }
 
   async refresh(): Promise<void> {
     const available = new Set(this.plugin.store.list().map((item) => item.id));
     this.selectedIds = new Set([...this.selectedIds].filter((id) => available.has(id)));
-    await this.render();
+    this.render();
   }
 
-  private async render(): Promise<void> {
+  private render(): void {
     const content = this.contentEl;
     content.empty();
     content.addClass("sat-view");
@@ -162,14 +162,21 @@ export class SafeTrashView extends ItemView {
     onClick: () => Promise<void> | void
   ): void {
     const button = parent.createEl("button", { text: label, cls: className });
-    button.addEventListener("click", async () => {
-      button.disabled = true;
-      try {
-        await onClick();
-      } finally {
-        button.disabled = false;
-      }
+    button.addEventListener("click", () => {
+      void this.runToolbarAction(button, onClick);
     });
+  }
+
+  private async runToolbarAction(
+    button: HTMLButtonElement,
+    onClick: () => Promise<void> | void
+  ): Promise<void> {
+    button.disabled = true;
+    try {
+      await onClick();
+    } finally {
+      button.disabled = false;
+    }
   }
 
   private async restoreOne(record: TrashRecord): Promise<void> {

@@ -3,7 +3,7 @@ import { ConfirmModal, ScanReviewModal } from "./modals";
 import { UnusedAttachmentScanner } from "./scanner";
 import { DEFAULT_SETTINGS, SafeTrashSettingTab } from "./settings";
 import { SafeTrashStore } from "./store";
-import type { SafeTrashSettings } from "./types";
+import type { SafeTrashSettings, ScanCandidate } from "./types";
 import { SafeTrashView, VIEW_TYPE_SAFE_TRASH } from "./view";
 import { SafeTrashPreviewView, VIEW_TYPE_SAFE_TRASH_PREVIEW } from "./preview";
 import { resolveLanguage, translate } from "./i18n";
@@ -11,6 +11,10 @@ import type { AppLanguage, TranslationKey } from "./i18n";
 
 interface ScanOptions {
   silentWhenEmpty?: boolean;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 export default class SafeAttachmentTrashPlugin extends Plugin {
@@ -74,13 +78,28 @@ export default class SafeAttachmentTrashPlugin extends Plugin {
     }));
   }
 
-  onunload(): void {
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_SAFE_TRASH);
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_SAFE_TRASH_PREVIEW);
-  }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const loaded: unknown = await this.loadData();
+    const data = isRecord(loaded) ? loaded : {};
+    this.settings = {
+      language: data.language === "fa" || data.language === "en" || data.language === "auto"
+        ? data.language
+        : DEFAULT_SETTINGS.language,
+      extensions: typeof data.extensions === "string" ? data.extensions : DEFAULT_SETTINGS.extensions,
+      excludedFolders: typeof data.excludedFolders === "string"
+        ? data.excludedFolders
+        : DEFAULT_SETTINGS.excludedFolders,
+      minimumAgeHours: typeof data.minimumAgeHours === "number" && Number.isFinite(data.minimumAgeHours)
+        ? Math.max(0, data.minimumAgeHours)
+        : DEFAULT_SETTINGS.minimumAgeHours,
+      conflictBehavior: data.conflictBehavior === "rename" || data.conflictBehavior === "skip" || data.conflictBehavior === "overwrite"
+        ? data.conflictBehavior
+        : DEFAULT_SETTINGS.conflictBehavior,
+      scanCanvasFiles: typeof data.scanCanvasFiles === "boolean"
+        ? data.scanCanvasFiles
+        : DEFAULT_SETTINGS.scanCanvasFiles
+    };
   }
 
   async saveSettings(): Promise<void> {
@@ -130,7 +149,7 @@ export default class SafeAttachmentTrashPlugin extends Plugin {
     this.scanInProgress = true;
     if (!options.silentWhenEmpty) new Notice(this.t("scanning"));
 
-    let candidates;
+    let candidates: ScanCandidate[];
     try {
       const scanner = new UnusedAttachmentScanner(this.app, this.settings);
       candidates = await scanner.scan();

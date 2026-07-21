@@ -1,3 +1,4 @@
+import { getLanguage } from "obsidian";
 import type { LanguageMode } from "./types";
 
 export type AppLanguage = "fa" | "en";
@@ -161,11 +162,7 @@ export type TranslationKey = keyof typeof messages.en;
 
 export function resolveLanguage(mode: LanguageMode): AppLanguage {
   if (mode === "fa" || mode === "en") return mode;
-  const candidates: string[] = [];
-  if (typeof document !== "undefined") candidates.push(document.documentElement.lang || "");
-  if (typeof window !== "undefined") candidates.push(window.localStorage?.getItem("language") || "");
-  if (typeof navigator !== "undefined") candidates.push(navigator.language || "");
-  return candidates.some((value) => value.toLowerCase().startsWith("fa")) ? "fa" : "en";
+  return getLanguage().toLowerCase().startsWith("fa") ? "fa" : "en";
 }
 
 export function translate(language: AppLanguage, key: TranslationKey, params: Params = {}): string {
